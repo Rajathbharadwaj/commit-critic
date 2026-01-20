@@ -17,14 +17,23 @@ git clone https://github.com/Rajathbharadwaj/commit-critic.git
 cd commit-critic
 
 # Install dependencies
-pip install -r requirements.txt
+make install
 
 # Set your Anthropic API key
 export ANTHROPIC_API_KEY=sk-ant-...
 
 # Analyze a repository
-python commit_critic.py --analyze --url="https://github.com/steel-dev/steel-browser"
+make analyze
 ```
+
+### Two Ways to Use
+
+| Mode | Command | Use Case |
+|------|---------|----------|
+| **CLI** | `make analyze` | Terminal usage, no server needed |
+| **LangGraph Platform** | `make up` then use Studio | Web UI, API access, remote clients |
+
+The CLI runs the agent directly in-process. LangGraph Platform is optional for Studio/API access.
 
 ## Architecture
 
@@ -438,6 +447,7 @@ commit-critic/
 ├── commit_critic.py         # CLI entry point
 ├── langgraph.json           # LangGraph Platform config
 ├── pyproject.toml           # Package configuration
+├── Makefile                 # Convenience commands
 ├── commit_critic/
 │   ├── __init__.py          # Package exports
 │   ├── graph.py             # LangGraph Platform entry point
@@ -447,11 +457,18 @@ commit-critic/
 │   ├── prompts.py           # System prompts
 │   ├── subagents.py         # 5 atomic subagents
 │   └── tools.py             # Git operation tools
+├── test-examples/           # Real test outputs
+│   ├── local-repo-analysis.md
+│   └── remote-url-analysis.md
 ├── docs/
 │   └── architecture.excalidraw
 ├── requirements.txt
 └── .env.example
 ```
+
+## Test Examples
+
+See the [test-examples/](test-examples/) folder for real analysis outputs from various repositories.
 
 ## License
 
