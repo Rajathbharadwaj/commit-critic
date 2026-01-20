@@ -40,6 +40,9 @@ env/
 # Checkpoints
 .commit_critic/
 
+# LangGraph
+.langgraph_api/
+
 # Temp clones
 /tmp/commit_critic_*
 
