@@ -273,7 +273,13 @@ def display_results(result):
 
 def run_list_threads():
     """List all conversation threads."""
-    from .commit_critic_agent import list_threads, CHECKPOINT_DB
+    from .commit_critic_agent import list_threads, CHECKPOINT_DB, SQLITE_AVAILABLE
+
+    if not SQLITE_AVAILABLE:
+        console.print("[yellow]Thread listing requires langgraph-checkpoint-sqlite[/yellow]")
+        console.print("[dim]Install with: pip install langgraph-checkpoint-sqlite[/dim]")
+        console.print("\n[dim]Note: In-memory threads persist only within the current session.[/dim]")
+        return
 
     threads = list_threads()
 
