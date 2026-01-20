@@ -28,22 +28,109 @@ python commit_critic.py --analyze --url="https://github.com/steel-dev/steel-brow
 
 ## Architecture
 
-Built using LangGraph's `deepagents` library with a multi-agent architecture:
+Built using LangGraph's `deepagents` library with a multi-agent architecture.
+
+📐 **[View Architecture Diagram](docs/architecture.excalidraw)** (open in [Excalidraw](https://excalidraw.com) or VS Code)
 
 ```
-Main Agent (Orchestrator)
-    │
-    ├── fetch_commits      → Clone repos & fetch commit history
-    ├── analyze_commits    → Score and categorize commit messages
-    ├── get_staged_changes → Get git diff --staged
-    ├── suggest_commit     → Generate commit messages from diff
-    └── execute_commit     → Run git commit
+┌─────────────────────────────────────────────────────────────┐
+│                         User / CLI                          │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Main Agent (Orchestrator)                      │
+│         Delegates atomic tasks via task() function          │
+├──────────────┬──────────────┬──────────────┬───────────────┤
+│              │              │              │               │
+▼              ▼              ▼              ▼               ▼
+┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐
+│  fetch   │ │ analyze  │ │  staged  │ │ suggest  │ │ execute  │
+│ commits  │ │ commits  │ │ changes  │ │  commit  │ │  commit  │
+└────┬─────┘ └──────────┘ └────┬─────┘ └──────────┘ └────┬─────┘
+     │                         │                         │
+     ▼                         ▼                         ▼
+┌──────────────────────────────────────────────────────────────┐
+│                    Tools (Git Operations)                    │
+│  clone_repo  │  get_commits  │  get_staged_diff  │  commit   │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-**Built-in Context Optimization:**
-- `FilesystemMiddleware` - Auto-evicts large tool outputs to files
-- `SummarizationMiddleware` - Auto-summarizes when context exceeds limit
-- `AnthropicPromptCachingMiddleware` - Caches system prompts for cost reduction
+### How LangGraph Deep Agents Work
+
+The `deepagents` library solves a fundamental problem with LLM agents: **context window overflow**. Traditional agents accumulate messages in a single thread, quickly exhausting the context limit. Deep agents use a hierarchical architecture:
+
+#### 1. Main Agent (Orchestrator)
+
+The orchestrator receives user requests and breaks them into atomic subtasks. Instead of executing everything itself, it delegates via the `task()` function:
+
+```python
+# In the main agent's system prompt:
+task("fetch_commits", "Fetch last 50 commits from https://github.com/...")
+task("analyze_commits", "Analyze these commits: [list]")
+```
+
+#### 2. Subagents (Isolated Execution)
+
+Each subagent runs with **its own fresh message thread**. This is the key innovation:
+
+- Subagent receives ONLY the task description (not the full conversation history)
+- Executes its atomic task with its own tools
+- Returns a summary result to the orchestrator
+- **Context is isolated** - subagent messages don't pollute main agent's context
+
+```python
+subagents = [
+    {
+        "name": "fetch_commits",
+        "description": "Fetches commits from git repositories",
+        "system_prompt": "You are a commit fetcher...",
+        "tools": [clone_repo_tool, get_commits_tool],
+    },
+    # ... more subagents
+]
+```
+
+#### 3. Built-in Middleware (Context Optimization)
+
+Deep agents include automatic context management:
+
+| Middleware | What It Does |
+|------------|--------------|
+| `FilesystemMiddleware` | When tool output exceeds 20k tokens, auto-writes to virtual file and returns path instead |
+| `SummarizationMiddleware` | When conversation exceeds token limit, uses a smaller model to summarize history |
+| `AnthropicPromptCachingMiddleware` | Caches system prompts to reduce API costs |
+| `SubAgentMiddleware` | Handles task() delegation with context isolation |
+
+#### 4. Checkpointer (Thread Persistence)
+
+LangGraph maintains conversation state across invocations:
+
+```python
+agent = create_deep_agent(
+    model=model,
+    subagents=subagents,
+    checkpointer=SqliteSaver(conn),  # Persist to SQLite
+)
+
+# Each invocation uses a thread_id
+agent.invoke({"messages": [...]}, config={"configurable": {"thread_id": "abc123"}})
+```
+
+This enables:
+- Resume conversations across sessions
+- Multiple parallel conversations
+- History inspection and management
+
+### Why This Architecture?
+
+| Problem | Deep Agents Solution |
+|---------|---------------------|
+| Context overflow | Subagents get fresh context per task |
+| Long tool outputs | Auto-evicted to filesystem |
+| Expensive re-prompting | System prompt caching |
+| Lost conversation state | SQLite checkpointer persistence |
+| Monolithic complexity | Atomic subagents with single responsibilities |
 
 ## Usage
 
