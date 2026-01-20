@@ -352,16 +352,22 @@ This project is configured to run on [LangGraph Platform](https://langchain-ai.g
 ### Development Server
 
 ```bash
-# Install LangGraph CLI
+# Install LangGraph CLI and package
 pip install langgraph-cli
+pip install -e .
 
 # Start dev server (hot reload enabled)
 langgraph dev
 
+# For remote access (e.g., from another machine)
+langgraph dev --host 0.0.0.0
+
 # Server runs at http://localhost:2024
 # - API docs: http://localhost:2024/docs
-# - Playground: http://localhost:2024/playground
+# - Studio UI: https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024
 ```
+
+**Remote Studio Access**: To connect from another machine, add your server's IP to Studio's "Allowed Origins" when connecting (e.g., `192.168.1.x`).
 
 ### Using the LangGraph SDK
 
@@ -403,10 +409,27 @@ langgraph up
 ### Configuration
 
 The `langgraph.json` configures:
-- **Graph entry point**: `commit_critic/graph.py:create_commit_critic_graph`
+- **Graph entry point**: `commit_critic.graph:create_commit_critic_graph`
 - **Checkpointer TTL**: 12 hours (auto-cleanup old threads)
 - **Store TTL**: 24 hours (for long-term memory)
 - **CORS**: Enabled for all origins
+
+### API Testing
+
+```bash
+# Create a thread
+curl -X POST http://localhost:2024/threads -H "Content-Type: application/json" -d '{}'
+
+# Run analysis (replace THREAD_ID)
+curl -X POST "http://localhost:2024/threads/THREAD_ID/runs" \
+  -H "Content-Type: application/json" \
+  -d '{"assistant_id":"commit_critic","input":{"messages":[{"role":"user","content":"Analyze last 10 commits"}]}}'
+
+# Analyze remote repo
+curl -X POST "http://localhost:2024/threads/THREAD_ID/runs" \
+  -H "Content-Type: application/json" \
+  -d '{"assistant_id":"commit_critic","input":{"messages":[{"role":"user","content":"Analyze commits from https://github.com/anthropics/anthropic-cookbook"}]}}'
+```
 
 ## File Structure
 
