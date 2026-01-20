@@ -63,9 +63,13 @@ def get_checkpointer():
     global _memory_saver
 
     if SQLITE_AVAILABLE:
+        import sqlite3
         # Ensure directory exists
         CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
-        checkpointer = SqliteSaver.from_conn_string(str(CHECKPOINT_DB))
+        # Create connection and SqliteSaver
+        conn = sqlite3.connect(str(CHECKPOINT_DB), check_same_thread=False)
+        checkpointer = SqliteSaver(conn)
+        checkpointer.setup()  # Initialize tables
         return checkpointer, "sqlite"
     else:
         # Use in-memory saver (session-only persistence)
