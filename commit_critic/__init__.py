@@ -7,6 +7,7 @@ A terminal tool that:
 """
 
 from .commit_critic_agent import create_commit_critic_agent
+from .graph import create_commit_critic_graph
 from .subagents import get_commit_critic_subagents
 from .tools import (
     get_commits_tool,
@@ -18,6 +19,7 @@ from .tools import (
 
 __all__ = [
     "create_commit_critic_agent",
+    "create_commit_critic_graph",
     "get_commit_critic_subagents",
     "get_commits_tool",
     "clone_repo_tool",

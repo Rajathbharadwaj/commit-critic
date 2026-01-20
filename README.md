@@ -345,22 +345,89 @@ python commit_critic.py --clear-threads
 | `LANGCHAIN_TRACING_V2` | No | Enable LangSmith tracing |
 | `LANGCHAIN_PROJECT` | No | LangSmith project name |
 
+## LangGraph Platform Deployment
+
+This project is configured to run on [LangGraph Platform](https://langchain-ai.github.io/langgraph/) for production deployments.
+
+### Development Server
+
+```bash
+# Install LangGraph CLI
+pip install langgraph-cli
+
+# Start dev server (hot reload enabled)
+langgraph dev
+
+# Server runs at http://localhost:2024
+# - API docs: http://localhost:2024/docs
+# - Playground: http://localhost:2024/playground
+```
+
+### Using the LangGraph SDK
+
+```python
+from langgraph_sdk import get_client
+
+# Connect to local dev server
+client = get_client(url="http://localhost:2024")
+
+# Or connect to LangGraph Cloud
+# client = get_client(url="https://your-deployment.langgraph.app")
+
+# Create a thread
+thread = await client.threads.create()
+
+# Invoke the agent
+result = await client.runs.create(
+    thread_id=thread["thread_id"],
+    assistant_id="commit_critic",
+    input={
+        "messages": [{
+            "role": "user",
+            "content": "Analyze commits from https://github.com/steel-dev/steel-browser"
+        }]
+    }
+)
+```
+
+### Docker Deployment
+
+```bash
+# Build Docker image
+langgraph build -t commit-critic
+
+# Run with Docker Compose
+langgraph up
+```
+
+### Configuration
+
+The `langgraph.json` configures:
+- **Graph entry point**: `commit_critic/graph.py:create_commit_critic_graph`
+- **Checkpointer TTL**: 12 hours (auto-cleanup old threads)
+- **Store TTL**: 24 hours (for long-term memory)
+- **CORS**: Enabled for all origins
+
 ## File Structure
 
 ```
 commit-critic/
-├── commit_critic.py         # Entry point
+├── commit_critic.py         # CLI entry point
+├── langgraph.json           # LangGraph Platform config
+├── pyproject.toml           # Package configuration
 ├── commit_critic/
 │   ├── __init__.py          # Package exports
+│   ├── graph.py             # LangGraph Platform entry point
 │   ├── cli.py               # CLI interface
-│   ├── commit_critic_agent.py # LangGraph deep agent
+│   ├── commit_critic_agent.py # Agent creation (standalone)
 │   ├── models.py            # Pydantic models
 │   ├── prompts.py           # System prompts
 │   ├── subagents.py         # 5 atomic subagents
 │   └── tools.py             # Git operation tools
+├── docs/
+│   └── architecture.excalidraw
 ├── requirements.txt
-├── .env.example
-└── README.md
+└── .env.example
 ```
 
 ## License
